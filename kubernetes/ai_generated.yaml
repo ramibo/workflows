@@ -1,0 +1,28 @@
+author: "ram.matzkovsky@kubiya.ai"
+version: 3
+type: "conversation"
+name: "AI Generated"
+steps:
+  - id: "k8s_namespaces"
+    type: "action"
+    action:
+      runner: "ram-eks-dev"
+      store: "kubernetes"
+      name: "list_namespace"
+      parameters: {}
+  - id: "selected_namespace"
+    type: "input"
+    value_type: "enum"
+    possible_values: "${k8s_namespaces}"
+    prompt: "Select the namespace of the logs you want to get"
+  - id: "k8s_logs"
+    type: "action"
+    action:
+      runner: "ram-eks-dev"
+      store: "kubernetes"
+      name: "get_namespaced_job_logs"
+      parameters:
+        namespace: "${selected_namespace}"
+  - id: "print_logs"
+    type: "message"
+    prompt: "📝 Logs for namespace *${selected_namespace}*:\n ```${k8s_logs}```"
