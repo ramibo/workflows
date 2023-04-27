@@ -1,0 +1,99 @@
+author: "ram.matzkovsky@kubiya.ai"
+version: 3
+type: "conversation"
+name: "Create EC2 instance"
+steps:
+  - type: "input"
+    value_type: "enum"
+    id: "instance_purpose"
+    prompt: "For which purpose do you need an ec2 instance?"
+    possible_values:
+      - "Development"
+      - "New application service"
+      - "Testing"
+      - "Other"
+  - type: "action"
+    id: "instance_types"
+    jq: ".instance_types.InstanceTypes[].InstanceType"
+    action:
+      name: "ec2.DescribeInstanceTypes"
+      store: "aws"
+      async: false
+      runner: null
+      parameters: {}
+  - type: "input"
+    value_type: "enum"
+    id: "selected_instance_type"
+    prompt: "Alright, which instance type do you need?"
+    possible_values: "${instance_types}"
+  - type: "action"
+    id: "security_groups"
+    action:
+      name: "ec2.DescribeSecurityGroups"
+      store: "aws"
+      async: false
+      runner: null
+      parameters: {}
+  - type: "jq"
+    id: "security_groups_options"
+    jq: ".security_groups.SecurityGroups[].GroupName"
+  - type: "input"
+    value_type: "enum"
+    id: "selected_security_group"
+    prompt: "And which security group to set up with the instance?"
+    possible_values: "${security_groups_options}"
+  - type: "action"
+    id: "images"
+    action:
+      name: "ec2.DescribeImages"
+      store: "aws"
+      async: false
+      runner: null
+      parameters:
+        Owners:
+          - "564407622114"
+  - type: "jq"
+    id: "image_options"
+    jq: ".images.Images[].ImageId"
+  - type: "input"
+    value_type: "enum"
+    id: "selected_image"
+    prompt: "Which AMI (Image) to use for the created instance?"
+    possible_values: "${image_options}"
+  - type: "input"
+    value_type: "boolean"
+    id: "approval"
+    prompt: "Let me know I got it all correctly. Are you sure you want to create EC2 instance for *${instance_purpose}* with Type: *${selected_instance_type}* Security Group: *${selected_security_group}* Image (AMI): *${selected_image}*?"
+  - type: "condition"
+    id: "conditional_exit"
+    if:
+      arg: "${approval}"
+      is: "equals"
+      arg2: "true"
+      then:
+        - type: "goto"
+          id: "conditional_exit_then"
+          goto: "create_instance"
+      else:
+        - type: "goto"
+          id: "conditional_exit_else"
+          goto: "exit"
+  - type: "action"
+    id: "create_instance"
+    action:
+      name: "ec2.RunInstances"
+      store: "aws"
+      async: false
+      runner: null
+      parameters:
+        ImageId: "${selected_image}"
+        MaxCount: 1
+        MinCount: 1
+  - type: "jq"
+    id: "created_instance_id"
+    jq: ".create_instance.Instances[0].InstanceId"
+  - type: "message"
+    id: "send_information"
+    prompt: "Successfully created EC2 instance: \n```${created_instance_id}```\n <https://eu-west-1.console.aws.amazon.com/ec2/v2/home?region=eu-west-1#InstanceDetails:instanceId=${created_instance_id}|View on the AWS Console>"
+  - type: "exit"
+    id: "exit"

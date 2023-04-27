@@ -1,0 +1,38 @@
+author: "ram.matzkovsky@kubiya.ai"
+version: 3
+type: "conversation"
+name: "Which EC2 instances are active"
+steps:
+  - type: "action"
+    id: "get_ec2_instances"
+    action:
+      name: "ec2.DescribeInstances"
+      store: "aws"
+      async: false
+      runner: null
+      parameters:
+        Filters:
+          - Name: "instance-state-name"
+            Values:
+              - "running"
+  - type: "jq"
+    id: "ec2_instances"
+    jq: ".get_ec2_instances.Reservations[].Instances[].InstanceId"
+  - type: "input"
+    value_type: "enum"
+    id: "ec2_instance"
+    prompt: "Here are all the active instances. If you want to see details or a specific instance, select it below or type 'exit'"
+    possible_values: "${ec2_instances}"
+  - type: "action"
+    id: "get_ec2_instance"
+    action:
+      name: "ec2.DescribeInstances"
+      store: "aws"
+      async: false
+      runner: null
+      parameters:
+        InstanceIds:
+          - "${ec2_instance}"
+  - type: "json_message"
+    id: "ec2_instance_details"
+    prompt: "${get_ec2_instance}"

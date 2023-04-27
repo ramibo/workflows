@@ -1,0 +1,34 @@
+author: "ram.matzkovsky@kubiya.ai"
+version: 3
+type: "conversation"
+name: "Restart EC2 instance"
+steps:
+  - type: "action"
+    id: "get_ec2_instances"
+    action:
+      name: "ec2.DescribeInstances"
+      store: "aws"
+      async: false
+      runner: null
+      parameters: {}
+  - type: "jq"
+    id: "ec2_instances"
+    jq: ".get_ec2_instances.Reservations[].Instances[].InstanceId"
+  - type: "input"
+    value_type: "enum"
+    id: "ec2_instance"
+    prompt: "Select the EC2 instance you want to restart"
+    possible_values: "${ec2_instances}"
+  - type: "action"
+    id: "restart_ec2_instance"
+    action:
+      name: "ec2.RebootInstances"
+      store: "aws"
+      async: false
+      runner: null
+      parameters:
+        InstanceIds:
+          - "${ec2_instance}"
+  - type: "message"
+    id: "success"
+    prompt: "✅ *Done!*\nRestarted EC2 instance: *${ec2_instance}* succesfully!"
